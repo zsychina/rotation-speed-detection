@@ -1,0 +1,11 @@
+path: E:/innovProject/TargetData
+
+train: E:/innovProject/TargetData/images/train
+val: E:/innovProject/TargetData/images/val
+test: E:/innovProject/TargetData/images/test
+
+
+nc: 1
+
+names: 
+  0: mark
