@@ -7,8 +7,20 @@ from Kalmantool import KalmanFilter
 from Analyze import LimitedQueue
 from Analyze import CalPeriod
 
+def rotation_pred(recent_x):
+    flame_len = len(recent_x)
+    y = np.array(range(flame_len))
+    k, b = np.polyfit(recent_x*100, y, deg=1)
+    print(k)
+    if k < 0: return 1
+    else: return 0
+
+bullet_time = 0.1 # example bullet_time=0.1
+
+rotation_dir = 1 # 1: to left; 0: to right
+
 # meta params
-QUEUE_LEN = 200
+QUEUE_LEN = 500
 
 # model = torch.hub.load('ultralytics/yolov5', 'yolov5s') # download from github
 # model = torch.hub.load('ultralytics/yolov5', 'custom', 'runs/train/exp14/weights/best.pt')
@@ -75,6 +87,14 @@ while True:
         cv.rectangle(image, (int(obj_x), int(obj_y)), (int(obj_x+obj_width), int(obj_y+obj_height)), (0,255,0),2) # yolo
         cv.rectangle(image, (int(next_x), int(next_y)), (int(next_x+obj_width), int(next_y+obj_height)), (255,255,255),2) # kalman 
         
+
+        if d_x != None:
+            if rotation_dir == 1:
+                cv.rectangle(image, (int(obj_x-d_x), int(obj_y)), (int(obj_x+obj_width-d_x), int(obj_y+obj_height)), (0,255,255),2)
+            elif rotation_dir == 0:
+                cv.rectangle(image, (int(obj_x+d_x), int(obj_y)), (int(obj_x+obj_width+d_x), int(obj_y+obj_height)), (0,255,255),2)
+
+
         # save data
         # - current location
         # locx_base.push(obj_x)
@@ -88,6 +108,8 @@ while True:
         x_pre_arr = np.array(predictions_x)
         y_pre_arr = np.array(predictions_y)
 
+
+
     except:
         # print('No obj detected')
         predictions_x.push(0)
@@ -98,6 +120,14 @@ while True:
 
     if current_fps > 10:
         current_period = CalPeriod.period(x_pre_arr, process_time)
+
+        d_x = (500/current_period) * bullet_time
+
+        if len(x_pre_arr) > 200:
+            try:
+                rotation_dir = rotation_pred(x_pre_arr[-200:])
+            except:
+                pass
 
         # statistics
         period_stat.append(current_period)
