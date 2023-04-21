@@ -6,11 +6,36 @@ import time
 from Kalmantool import KalmanFilter
 from Analyze import LimitedQueue
 from Analyze import CalPeriod
+import matplotlib.pyplot as plt
+
+from scipy import stats
+from sklearn.linear_model import LinearRegression
+
+def linear_regression_intercept(data):
+    # 将原始数据转换为NumPy数组，并将x轴坐标设为该数组的索引值
+    data = np.array(data)
+    x = np.arange(len(data)).reshape(-1, 1)
+
+    # 使用Z-score方法识别离群点，去除离群点后的数据集为filtered_entries
+    z_scores = stats.zscore(data)
+    abs_z_scores = np.abs(z_scores)
+    filtered_entries = (abs_z_scores < 3)
+    filtered_data = data[filtered_entries]
+    x = x[filtered_entries]
+
+    # 创建并训练线性回归模型
+    model = LinearRegression()
+    model.fit(x, filtered_data)
+
+    # 返回线性回归模型的纵截距
+    return model.intercept_
+
 
 def rotation_pred(recent_x):
+    data_aug = 1
     flame_len = len(recent_x)
     y = np.array(range(flame_len))
-    k, b = np.polyfit(recent_x*100, y, deg=1)
+    k, _ = np.polyfit(recent_x * data_aug, y, deg=1)
     print(k)
     if k < 0: return 1
     else: return 0
@@ -90,9 +115,9 @@ while True:
 
         if d_x != None:
             if rotation_dir == 1:
-                cv.rectangle(image, (int(obj_x-d_x), int(obj_y)), (int(obj_x+obj_width-d_x), int(obj_y+obj_height)), (0,255,255),2)
+                cv.rectangle(image, (int(next_x-d_x), int(next_y)), (int(next_x+obj_width-d_x), int(next_y+obj_height)), (0,255,255),2)
             elif rotation_dir == 0:
-                cv.rectangle(image, (int(obj_x+d_x), int(obj_y)), (int(obj_x+obj_width+d_x), int(obj_y+obj_height)), (0,255,255),2)
+                cv.rectangle(image, (int(next_x+d_x), int(next_y)), (int(next_x+obj_width+d_x), int(next_y+obj_height)), (0,255,255),2)
 
 
         # save data
@@ -121,16 +146,19 @@ while True:
     if current_fps > 10:
         current_period = CalPeriod.period(x_pre_arr, process_time)
 
-        d_x = (500/current_period) * bullet_time
+        d_x = (1000/current_period) * bullet_time
 
         if len(x_pre_arr) > 200:
             try:
                 rotation_dir = rotation_pred(x_pre_arr[-200:])
+                # current_period = linear_regression_intercept(period_stat)
             except:
                 pass
 
+        
         # statistics
         period_stat.append(current_period)
+
 
         print('current_period: ', current_period)
 
@@ -150,3 +178,14 @@ cv.destroyAllWindows()
 
 
 # 实际上应该是1.81s左右
+
+# import matplotlib
+# matplotlib.use('TkAgg')
+
+# plt.subplot(2, 1, 1)
+# plt.plot(x_arr)
+# plt.subplot(2, 1, 2)
+# plt.plot(x_pre_arr)
+
+# plt.show()
+
